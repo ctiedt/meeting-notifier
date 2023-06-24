@@ -7,3 +7,5 @@ meeting-notifier <pattern> <command>
 ```
 
 You have to put the command in quotes if it has an argument.
+
+Optionally, you can add a second command that runs when the targeted process exits.

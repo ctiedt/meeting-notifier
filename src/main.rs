@@ -13,6 +13,7 @@ struct ProcInfo {
 struct Args {
     pattern: String,
     cmd: String,
+    closing_cmd: Option<String>,
 }
 
 fn main() -> color_eyre::Result<()> {
@@ -20,9 +21,22 @@ fn main() -> color_eyre::Result<()> {
     let mut processes = [0u32; 8192];
     let mut cb_needed = 0;
 
-    let mut program_args = args.cmd.split_whitespace();
-    let program = program_args.next().unwrap();
-    let program_args = program_args.collect::<Vec<_>>();
+    let program_args = args
+        .cmd
+        .split_whitespace()
+        .map(|it| it.to_string())
+        .collect::<Vec<_>>();
+
+    let mut closing_program_args = None;
+
+    if let Some(closing_cmd) = args.closing_cmd {
+        closing_program_args.replace(
+            closing_cmd
+                .split_whitespace()
+                .map(|it| it.to_string())
+                .collect::<Vec<_>>(),
+        );
+    }
 
     let mut target_detected = false;
 
@@ -48,13 +62,21 @@ fn main() -> color_eyre::Result<()> {
             .any(|proc| proc.name.to_ascii_lowercase().contains(&args.pattern))
         {
             if !target_detected {
-                std::process::Command::new(program)
-                    .args(&program_args)
+                std::process::Command::new(&program_args[0])
+                    .args(&program_args[1..])
                     .spawn()?
                     .wait()?;
                 target_detected = true;
             }
         } else {
+            if target_detected {
+                if let Some(closing_program_args) = &closing_program_args {
+                    std::process::Command::new(&closing_program_args[0])
+                        .args(&closing_program_args[1..])
+                        .spawn()?
+                        .wait()?;
+                }
+            }
             target_detected = false;
         }
     }
